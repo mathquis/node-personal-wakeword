@@ -1,0 +1,25 @@
+{
+  "name": "wakeword",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "chalk": "^4.0.0",
+    "compute-cosine-similarity": "^1.0.0",
+    "cos-similarity": "^1.0.1",
+    "dft-easy": "^1.1.0",
+    "dtw": "0.0.3",
+    "dynamic-time-warping": "^1.0.0",
+    "fft-js": "0.0.12",
+    "glob": "^7.1.6",
+    "meyda": "^5.0.2",
+    "node-vad": "^1.1.4",
+    "sound-parameters-extractor": "^1.4.0",
+    "wavefile": "^11.0.0"
+  }
+}
