@@ -1,7 +1,6 @@
 const File					= require('fs')
 const Path					= require('path')
 const Framer				= require('sound-parameters-extractor').framer
-const config				= require('./config')
 const {Wavefile}			= require('wavefile')
 const DTW					= require('dtw')
 const cosineSimilarity		= require('cos-similarity')
@@ -9,6 +8,22 @@ const Glob					= require('glob')
 const Chalk					= require('chalk')
 const Gist					= require('../node-gist/lib/index')
 // const VAD					= require('node-vad')
+
+const config = {
+	SHOW_TIMINGS: false,
+	THRESHOLD: 0.5,
+	DTW_REF: 0.24,
+	BAND_SIZE: 4,
+	PREEMPHASIS_COEFFICIENT: 0.97,
+	// RAW_ENERGY: true,
+	// NUM_MEL_BINS: 12,
+	// NUM_FEATURES: 12,
+	FRAME_LENGTH_MS: 25.0,
+	FRAME_SHIFT_MS: 10.0,
+	SAMPLE_RATE,
+	// LOW_FREQ: 20,
+	// HIGH_FREQ: SAMPLE_RATE / 2
+}
 
 // console.log(config)
 
@@ -318,14 +333,16 @@ function normalizeFeatures(frames) {
 			sum[j] += frames[i][j]
 		}
 	}
-	// j = 1 because we remove the first MFCC
+	// Note: j = 1 because we remove the first MFCC
+	const fromMfcc	= 1
+	const toMfcc	= numFeatures
 	for ( let i = 0 ; i < numFrames ; i++ ) {
-		for ( let j = 1 ; j < numFeatures ; j++ ) {
+		for ( let j = fromMfcc ; j < toMfcc ; j++ ) {
 			const idx = i
 			const idx2 = j - 1
 			if ( !normalized[idx] ) normalized[idx] = []
 			const value = frames[i][j]
-			normalized[idx][idx2] = value - ( sum[j] / numFrames )
+			normalized[idx][idx2] = ( value - ( sum[j] / numFrames ) )
 		}
 	}
 	stopTiming('normalize_features')
