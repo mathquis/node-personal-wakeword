@@ -18,11 +18,11 @@ function convertInt16ToFloat32(n) {
 class WakewordEngine extends Stream.Transform {
 	constructor(options) {
 		super()
-		this.options = options || {}
-		this.wakewords = []
-		this._features = []
-		this._buffering = true
-		this._detected = false
+		this.options	= options || {}
+		this.wakewords	= []
+		this._features	= []
+		this._buffering	= true
+		this._detected	= false
 
 		this._extractor = new FeatureExtractor({
 			samplesPerFrame: this.samplesPerFrame,
@@ -151,7 +151,7 @@ class WakewordEngine extends Stream.Transform {
 				setTimeout(() => {
 					this._detected = false
 					this._notifyListening()
-				}, Math.round(this.frameLengthMS * this._minFrames))
+				}, Math.round(this.frameShiftMS * this._minFrames))
 				this._notifyDetected(result)
 			}
 		}
