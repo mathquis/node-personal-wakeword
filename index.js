@@ -5,7 +5,8 @@ const Block				= require('block-stream2')
 const VAD 				= require('node-vad')
 const DTW				= require('dtw')
 const cosineSimilarity	= require('cos-similarity')
-const Gist				= require('../node-gist/lib/index')
+const Gist				= require('@mathquis/node-gist')
+// const savitzkyGolay 	= require('ml-savitzky-golay')
 
 const NONE		= false
 const DETECTED	= true
@@ -284,7 +285,7 @@ class FeatureComparator {
 	}
 
 	get bandSize() {
-		return this.options.bandSize || 3
+		return this.options.bandSize || 5
 	}
 
 	get ref() {
