@@ -5,7 +5,6 @@ class FeatureComparator {
 	constructor(options) {
 		this.options = options || {}
 		this._dtw = new DTW({distanceFunction: FeatureComparator.calculateDistance})
-		console.log(this._dtw)
 	}
 
 	static calculateDistance(ax, bx) {
