@@ -25,7 +25,8 @@
     "dtw",
     "hotword",
     "detector",
-    "node"
+    "node",
+    "alexa"
   ],
   "repository": {
     "type": "git",
