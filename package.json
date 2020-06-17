@@ -9,12 +9,14 @@
   "dependencies": {
     "@mathquis/node-gist": "^1.0.1",
     "block-stream2": "^2.0.0",
-    "chalk": "^4.0.0",
     "compute-cosine-similarity": "^1.0.0",
     "cos-similarity": "^1.0.1",
     "dtw": "0.0.3",
+    "node-vad": "^1.1.4"
+  },
+  "devDependencies": {
+    "chalk": "^4.0.0",
     "glob": "^7.1.6",
-    "node-vad": "^1.1.4",
     "wavefile": "^11.0.0"
   },
   "keywords": [
