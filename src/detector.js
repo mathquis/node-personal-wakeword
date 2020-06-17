@@ -7,7 +7,7 @@ const FeatureExtractor 	= require('./extractor')
 const FeatureComparator	= require('./comparator')
 const WakewordKeyword	= require('./keyword')
 
-class WakewordEngine extends Stream.Transform {
+class WakewordDetector extends Stream.Transform {
 	constructor(options) {
 		super()
 		this.options	= options || {}
@@ -242,10 +242,12 @@ class WakewordEngine extends Stream.Transform {
 
 	_createExtractor() {
 		return new FeatureExtractor({
+			...this.options,
 			samplesPerFrame: this.samplesPerFrame,
+			samplesPerShift: this.samplesPerShift,
 			sampleRate: this.sampleRate
 		})
 	}
 }
 
-module.exports = WakewordEngine
+module.exports = WakewordDetector
