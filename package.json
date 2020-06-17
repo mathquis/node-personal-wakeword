@@ -1,6 +1,6 @@
 {
   "name": "@mathquis/node-personal-wakeword",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Personal wake word detector",
   "main": "index.js",
   "scripts": {
@@ -9,9 +9,6 @@
   "dependencies": {
     "@mathquis/node-gist": "^1.0.1",
     "block-stream2": "^2.0.0",
-    "compute-cosine-similarity": "^1.0.0",
-    "cos-similarity": "^1.0.1",
-    "dtw": "0.0.3",
     "node-vad": "^1.1.4"
   },
   "devDependencies": {

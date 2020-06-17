@@ -12,9 +12,8 @@ class WakewordDetector extends Stream.Transform {
 		super()
 		this.options	= options || {}
 		this._keywords	= new Map()
-		this._features	= []
+		this._frames	= []
 		this._buffering	= true
-		this._detected	= false
 		this._minFrames = 9999
 		this._maxFrames = 0
 		this._state 	= {keyword: '', score: 0}
@@ -155,42 +154,29 @@ class WakewordDetector extends Stream.Transform {
 	}
 
 	_processFeatures(features) {
-		this._features.push(features)
-		if ( this._features.length > this._maxFrames ) {
-			this._features.shift()
+		this._frames.push(features)
+		const numFrames = this._frames.length
+		if ( numFrames > this._minFrames ) {
 			if ( this._buffering ) {
 				this._buffering = false
-				this._notifyListening()
+				this.emit('ready')
 			}
-			if ( !this._detected ) {
-				this._runDetection()
-			}
+			this._runDetection()
+		}
+		if ( numFrames > this._maxFrames ) {
+			this._frames.shift()
 		}
 	}
 
-	_notifyListening() {
-		this.emit('listen')
-		this._buffering = false
-	}
-
-	_notifyDetected(result) {
-		this._detected = true
-		setTimeout(() => {
-			this._detected = false
-			this._notifyListening()
-		}, Math.round(this.frameShiftMS * this._minFrames))
-		this.emit('detected', result.keyword, result.score)
-	}
-
 	_runDetection() {
-		const features = this._normalizeFeatures( this._features )
-		const result = this._getBestKeyword(features)
+		const features	= this._normalizeFeatures( this._frames )
+		const result	= this._getBestKeyword(features)
 		if ( result.score >= this.threshold ) {
 			if ( result.keyword === this._state.keyword ) {
 				if ( result.score < this._state.score ) {
-					if ( !this._detected ) {
-						this._notifyDetected(this._state)
-					}
+					this.emit('keyword', result.keyword, result.score)
+					this._frames = []
+					this._buffering = true
 				}
 			}
 		}

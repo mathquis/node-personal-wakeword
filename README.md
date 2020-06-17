@@ -30,14 +30,14 @@ async function main() {
 		threshold: 0.5 // Default value
 	})
 
-	// The detector will emit a "listening" event when it is starting to process the audio stream
-	detector.on('listening', () => {
+	// The detector will emit a "ready" event when its internal audio frame buffer is filled
+	detector.on('ready', () => {
 		console.log('listening...')
 	})
 
 	// The detector will emit a "detected" event when it has detected a keyword in the audio stream
-	detector.on('detected', (keyword, score) => {
-		console.log(\`detected "${keyword}" with score ${score}\`)
+	detector.on('keyword', (keyword, score) => {
+		console.log(`detected "${keyword}" with score ${score}`)
 	})
 
 	// Add a new keyword using multiple "templates"

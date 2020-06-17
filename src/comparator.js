@@ -1,14 +1,15 @@
-const DTW				= require('dtw')
-const cosineSimilarity	= require('cos-similarity')
+const DTW	= require('./dtw/dtw')
+const Utils	= require('./utils')
 
 class FeatureComparator {
 	constructor(options) {
 		this.options = options || {}
 		this._dtw = new DTW({distanceFunction: FeatureComparator.calculateDistance})
+		console.log(this._dtw)
 	}
 
 	static calculateDistance(ax, bx) {
-		return 1 - cosineSimilarity(ax, bx)
+		return 1 - Utils.cosineSimilarity(ax, bx)
 	}
 
 	get bandSize() {
