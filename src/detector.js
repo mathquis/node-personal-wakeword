@@ -12,11 +12,10 @@ class WakewordDetector extends Stream.Transform {
 		super()
 		this.options	= options || {}
 		this._keywords	= new Map()
-		this._frames	= []
-		this._buffering	= true
 		this._minFrames = 9999
 		this._maxFrames = 0
-		this._state 	= {keyword: '', score: 0}
+
+		this.reset()
 
 		this._comparator = new FeatureComparator(options)
 
@@ -148,6 +147,12 @@ class WakewordDetector extends Stream.Transform {
 		this.push(audioBuffer)
 	}
 
+	reset() {
+		this._frames = []
+		this._buffering = true
+		this._state = {keyword: null, score: 0}
+	}
+
 	_transform(buffer, enc, done) {
 		this.push(buffer)
 		done()
@@ -171,12 +176,12 @@ class WakewordDetector extends Stream.Transform {
 	_runDetection() {
 		const features	= this._normalizeFeatures( this._frames )
 		const result	= this._getBestKeyword(features)
-		if ( result.score >= this.threshold ) {
+		if ( result.keyword !== null ) {
 			if ( result.keyword === this._state.keyword ) {
 				if ( result.score < this._state.score ) {
 					this.emit('keyword', result.keyword, result.score)
-					this._frames = []
-					this._buffering = true
+					this.reset()
+					return
 				}
 			}
 		}
@@ -184,16 +189,16 @@ class WakewordDetector extends Stream.Transform {
 	}
 
 	_getBestKeyword(features) {
-		let result = {keyword: '', score: 0}
+		let result = {keyword: null, score: 0}
 		this._keywords.forEach(kw => {
 			if ( !kw.enabled ) return
 			kw._templates.forEach((t) => {
 				const score = this._comparator.compare(t, features.slice(Math.round(-1 * t.length)))
-				if ( score > result.score ) {
-					result = {
-						keyword: kw.keyword,
-						score
-					}
+				if ( score < ( kw.threshold || this.threshold ) ) return
+				if ( score < result.score ) return
+				result = {
+					keyword: kw.keyword,
+					score
 				}
 			})
 		})

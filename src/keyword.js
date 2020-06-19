@@ -7,6 +7,10 @@ class WakewordKeyword {
 		this.enabled 	= true
 	}
 
+	get threshold() {
+		return this.options.threshold
+	}
+
 	addFeatures(features) {
 		this._templates.push(features)
 		// Calculate average and store in this.features
