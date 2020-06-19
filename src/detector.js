@@ -21,8 +21,8 @@ class WakewordDetector extends Stream.Transform {
 
 		this._extractor = this._createExtractor()
 
-		this._extractor.on('features', features => {
-			this._processFeatures(features)
+		this._extractor.on('features', (features, audioBuffer) => {
+			this._processFeatures(features, audioBuffer)
 		})
 
 		this._vad = VAD.createStream({
@@ -149,6 +149,7 @@ class WakewordDetector extends Stream.Transform {
 
 	reset() {
 		this._frames = []
+		this._chunks = []
 		this._buffering = true
 		this._state = {keyword: null, score: 0}
 	}
@@ -158,8 +159,9 @@ class WakewordDetector extends Stream.Transform {
 		done()
 	}
 
-	_processFeatures(features) {
+	_processFeatures(features, audioBuffer) {
 		this._frames.push(features)
+		this._chunks.push(audioBuffer)
 		const numFrames = this._frames.length
 		if ( numFrames > this._minFrames ) {
 			if ( this._buffering ) {
@@ -170,6 +172,7 @@ class WakewordDetector extends Stream.Transform {
 		}
 		if ( numFrames > this._maxFrames ) {
 			this._frames.shift()
+			this._chunks.shift()
 		}
 	}
 
@@ -177,9 +180,16 @@ class WakewordDetector extends Stream.Transform {
 		const features	= this._normalizeFeatures( this._frames )
 		const result	= this._getBestKeyword(features)
 		if ( result.keyword !== null ) {
-			if ( result.keyword === this._state.keyword ) {
+			if ( result.keyword && result.keyword === this._state.keyword ) {
 				if ( result.score < this._state.score ) {
-					this.emit('keyword', result.keyword, result.score)
+					const timestamp = (new Date()).getTime()
+					const audioData = Buffer.concat(this._chunks.slice(Math.round(-1.2 * result.frames)))
+					const eventPayload = {
+						...result,
+						audioData,
+						timestamp
+					}
+					this.emit('keyword', eventPayload)
 					this.reset()
 					return
 				}
@@ -189,18 +199,20 @@ class WakewordDetector extends Stream.Transform {
 	}
 
 	_getBestKeyword(features) {
-		let result = {keyword: null, score: 0, processed: 0}
+		let result = {keyword: null, score: 0, threshold: this.threshold}
 		this._keywords.forEach(kw => {
 			if ( !kw.enabled ) return
+			const threshold = kw.threshold || this.threshold
 			const templates = kw.templates
-			result.processed += templates.length
 			templates.forEach((template) => {
 				const score = this._comparator.compare(template, features.slice(Math.round(-1 * template.length)))
-				if ( score < ( kw.threshold || this.threshold ) ) return
+				if ( score < threshold ) return
 				if ( score < result.score ) return
 				result = {
 					...result,
 					keyword: kw.keyword,
+					frames: template.length,
+					threshold,
 					score
 				}
 			})

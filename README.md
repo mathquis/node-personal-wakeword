@@ -35,17 +35,32 @@ async function main() {
 		console.log('listening...')
 	})
 
-	// The detector will emit a "detected" event when it has detected a keyword in the audio stream
-	detector.on('keyword', (keyword, score) => {
-		console.log(`detected "${keyword}" with score ${score}`)
+	// The detector will emit a "keyword" event when it has detected a keyword in the audio stream
+	/* The event payload is:
+		{
+			"keyword"     : "alexa", // The detected keyword
+			"score"       : 0.56878768987, // The detection score
+			"threshold"   : 0.5, // The detection threshold used (global or keyword)
+			"frames"      : 89, // The number of audio frames used in the detection
+			"timestamp"   : 1592574404789, // The detection timestamp (ms)
+			"audioData"   : <Buffer> // The utterance audio data (can be written to a file for debugging)
+		}
+	*/
+	detector.on('keyword', ({keyword, score, threshold, timestamp}) => {
+		console.log(`Detected "${keyword}" with score ${score} / ${threshold}`)
 	})
 
 	// Add a new keyword using multiple "templates"
 	await detector.addKeyword('alexa', [
+		// WAV templates (trimmed with no noise!)
 		'./keywords/alexa1.wav',
 		'./keywords/alexa2.wav',
 		'./keywords/alexa3.wav'
-	])
+	], {
+		// Options
+		disableAveraging: true, // Disabled by default, average templates to reduce resource consumption
+		threshold: 0.52 // Per keyword threshold
+	})
 
 	// Create an audio stream from an audio recorder (arecord, sox, etc.)
 	const recorder = new Recorder({

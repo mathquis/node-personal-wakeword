@@ -16,7 +16,7 @@ class FeatureExtractor extends Stream.Transform {
 				if ( this.samples.length >= this.samplesPerFrame ) {
 					this.samples = [...this.samples.slice(newSamples.length), ...newSamples]
 					const features = this.extractFeatures( this.samples.slice(0, this.samplesPerFrame) )
-					this.emit('features', features)
+					this.emit('features', features, audioBuffer)
 				} else {
 					this.samples = [...this.samples, ...newSamples]
 				}
