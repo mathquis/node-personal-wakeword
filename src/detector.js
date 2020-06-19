@@ -213,22 +213,19 @@ class WakewordDetector extends Stream.Transform {
 		const numFrames			= frames.length
 		const numFeatures		= frames[0].length
 		const sum				= new Array(numFeatures).fill(0)
-		const normalizedFrames	= []
+		const normalizedFrames	= new Array(numFrames)
+		// Using for loop for speed
+		// See benchmark: https://github.com/dg92/Performance-Analysis-JS
 		for ( let i = 0 ; i < numFrames ; i++ ) {
+			normalizedFrames[i] = new Array(numFeatures)
 			for ( let j = 0; j < numFeatures ; j++ ) {
 				sum[j] += frames[i][j]
+				normalizedFrames[i][j] = frames[i][j]
 			}
 		}
-		// Note: j = 1 because we remove the first MFCC
-		const fromMfcc	= 0
-		const toMfcc	= numFeatures
 		for ( let i = 0 ; i < numFrames ; i++ ) {
-			for ( let j = fromMfcc ; j < toMfcc ; j++ ) {
-				const idx = i
-				const idx2 = j - fromMfcc
-				if ( !normalizedFrames[idx] ) normalizedFrames[idx] = []
-				const value = frames[i][j]
-				normalizedFrames[idx][idx2] = ( value - ( sum[j] / numFrames ) )
+			for ( let j = 0; j < numFeatures ; j++ ) {
+				normalizedFrames[i][j] = normalizedFrames[i][j] - sum[j] / numFrames
 			}
 		}
 		return normalizedFrames
