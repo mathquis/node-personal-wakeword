@@ -189,14 +189,17 @@ class WakewordDetector extends Stream.Transform {
 	}
 
 	_getBestKeyword(features) {
-		let result = {keyword: null, score: 0}
+		let result = {keyword: null, score: 0, processed: 0}
 		this._keywords.forEach(kw => {
 			if ( !kw.enabled ) return
-			kw._templates.forEach((t) => {
-				const score = this._comparator.compare(t, features.slice(Math.round(-1 * t.length)))
+			const templates = kw.templates
+			result.processed += templates.length
+			templates.forEach((template) => {
+				const score = this._comparator.compare(template, features.slice(Math.round(-1 * template.length)))
 				if ( score < ( kw.threshold || this.threshold ) ) return
 				if ( score < result.score ) return
 				result = {
+					...result,
 					keyword: kw.keyword,
 					score
 				}

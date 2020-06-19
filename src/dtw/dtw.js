@@ -4,6 +4,7 @@ const EuclidianDistance = require('./distance')
 
 class DTW {
     constructor(options) {
+        options || (options = {})
         this._state            = {distanceCostMatrix: null}
         this._distanceFunction = options.distanceFunction || EuclidianDistance
     }
@@ -84,15 +85,13 @@ class DTW {
     path() {
         var path = null;
         if (this._state.distanceCostMatrix instanceof Array) {
-            path = retrieveOptimalPath(state);
+            path = this._retrieveOptimalPath();
         }
 
         return path;
     }
 
     _retrieveOptimalPath() {
-        const state = this._state
-
         let rowIndex = this._state.m - 1
         let columnIndex = this._state.n - 1
         const path = [[rowIndex, columnIndex]]

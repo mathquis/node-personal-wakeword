@@ -4,7 +4,7 @@ const nearlyEqual = function (i, j, epsilon) {
     const iAbsolute= Math.abs(i)
     const jAbsolute = Math.abs(j)
     const difference = Math.abs(i - j)
-    const equal = i === j
+    let equal = i === j
     if (!equal) {
         equal = difference < EPSILON
         if (!equal) {
