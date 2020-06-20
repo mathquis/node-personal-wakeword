@@ -22,6 +22,7 @@ async function main() {
 		bitLength: 16,
 		frameShiftMS: 10.0,
 		frameLengthMS: 30.0, // Must be a multiple of frameShiftMS
+		vadMode: WakewordDetector.VadMode.AGGRESSIVE, // See node-vad modes
 		vadDebounceTime: 500,
 		band: 5, // DTW window width
 		ref: 0.22, // See Snips paper for explanation about this parameter

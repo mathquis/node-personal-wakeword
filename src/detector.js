@@ -1,11 +1,10 @@
-const Stream			= require('stream')
-const File				= require('fs')
-const Path				= require('path')
-const Block				= require('block-stream2')
-const VAD 				= require('node-vad')
-const FeatureExtractor 	= require('./extractor')
-const FeatureComparator	= require('./comparator')
-const WakewordKeyword	= require('./keyword')
+const Stream				= require('stream')
+const File					= require('fs')
+const Path					= require('path')
+const FeatureExtractor		= require('./extractor')
+const FeatureComparator		= require('./comparator')
+const WakewordKeyword		= require('./keyword')
+const VoiceActivityFilter	= require('./vad')
 
 class WakewordDetector extends Stream.Transform {
 	constructor(options) {
@@ -19,27 +18,22 @@ class WakewordDetector extends Stream.Transform {
 
 		this._comparator = new FeatureComparator(options)
 
+		this._vad = new VoiceActivityFilter({
+			buffering: true,
+			sampleRate: this.sampleRate,
+			vadDebounceTime: this.vadDebounceTime
+		})
+
+		this._vad
+			.on('error', err => this.emit('error', new Error('VAD error: ' + err.message)))
+
 		this._extractor = this._createExtractor()
 
 		this._extractor
 			.on('features', (features, audioBuffer) => this._processFeatures(features, audioBuffer))
 			.on('error', err => this.emit('error', new Error('Extraction error: ' + err.message)))
 
-		this._vad = VAD.createStream({
-		    mode: VAD.Mode.AGGRESSIVE,
-		    audioFrequency: this.sampleRate,
-		    debounceTime: this.vadDebounceTime
-		})
-
-		this._vad
-			.on('data', data => {
-				if ( this._buffering || ( data && data.speech && data.speech.state == true ) ) {
-					this._extractor.write(data.audioData)
-				}
-			})
-			.on('error', err => this.emit('error', new Error('VAD error: ' + err.message)))
-
-		this.pipe(this._vad)
+		this.pipe(this._vad).pipe(this._extractor)
 	}
 
 	get buffering() {
@@ -76,6 +70,10 @@ class WakewordDetector extends Stream.Transform {
 
 	get threshold() {
 		return this.options.threshold || 0.5
+	}
+
+	get vadMode() {
+		return this.options.vadMode || VoiceActivityFilter.Mode.MODE_AGGRESSIVE
 	}
 
 	get vadDebounceTime() {
@@ -161,8 +159,8 @@ class WakewordDetector extends Stream.Transform {
 		this._chunks.push(audioBuffer)
 		const numFrames = this._frames.length
 		if ( numFrames > this._minFrames ) {
-			if ( this._buffering ) {
-				this._buffering = false
+			if ( this._vad.buffering ) {
+				this._vad.buffering = false
 				this.emit('ready')
 			}
 			this._runDetection()
@@ -250,5 +248,7 @@ class WakewordDetector extends Stream.Transform {
 		})
 	}
 }
+
+WakewordDetector.VadMode = VoiceActivityFilter.Mode
 
 module.exports = WakewordDetector
