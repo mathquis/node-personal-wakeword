@@ -13,6 +13,7 @@ npm i @mathquis/node-personal-wakeword
 ```javascript
 const WakewordDetector = require('@mathquis/node-personal-wakeword')
 const Recorder = require('mic')
+const Stream = require('stream')
 
 async function main() {
 	// Create a new wakeword detection engine
@@ -30,6 +31,30 @@ async function main() {
 		*/
 		threshold: 0.5 // Default value
 	})
+
+	// *****
+
+	// KEYWORD MANAGEMENT
+
+	// Add a new keyword using multiple "templates"
+	await detector.addKeyword('alexa', [
+		// WAV templates (trimmed with no noise!)
+		'./keywords/alexa1.wav',
+		'./keywords/alexa2.wav',
+		'./keywords/alexa3.wav'
+	], {
+		// Options
+		disableAveraging: true, // Disabled by default, disable templates averaging (note that resources consumption will increase)
+		threshold: 0.52 // Per keyword threshold
+	})
+
+	// Keywords can be enabled/disabled at runtime
+	detector.disableKeyword('alexa')
+	detector.enableKeyword('alexa')
+
+	// *****
+
+	// EVENTS
 
 	// The detector will emit a "ready" event when its internal audio frame buffer is filled
 	detector.on('ready', () => {
@@ -56,17 +81,26 @@ async function main() {
 		console.log(`Detected "${keyword}" with score ${score} / ${threshold}`)
 	})
 
-	// Add a new keyword using multiple "templates"
-	await detector.addKeyword('alexa', [
-		// WAV templates (trimmed with no noise!)
-		'./keywords/alexa1.wav',
-		'./keywords/alexa2.wav',
-		'./keywords/alexa3.wav'
-	], {
-		// Options
-		disableAveraging: true, // Disabled by default, disable templates averaging (note that resources consumption will increase)
-		threshold: 0.52 // Per keyword threshold
+	// Note that as the detector is a transform stream the standard "data" event also works...
+	// I just added the "keyword" event for clarity :)
+
+	// *****
+
+	// STREAMS
+
+	// As an alternative to events, the detector is a transform stream that takes audio buffers in and output keyword detection payload
+	const detectionStream = new Stream.Writable({
+		objectMode: true,
+		write: (data, enc, done) => {
+			// `data` is equivalent to "keyword" and "data" event payload
+			console.log(data)
+			done()
+		}
 	})
+
+	detector.pipe(detectionStream)
+
+	// *****
 
 	// Create an audio stream from an audio recorder (arecord, sox, etc.)
 	const recorder = new Recorder({

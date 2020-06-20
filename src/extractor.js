@@ -5,7 +5,9 @@ const Utils 			= require('./utils')
 
 class FeatureExtractor extends Stream.Transform {
 	constructor(options) {
-		super()
+		super({
+			readableObjectMode: true
+		})
 		this.options	= options || {}
 		this.samples	= []
 		this._extractor	= new Gist(this.samplesPerFrame, this.sampleRate)
@@ -17,7 +19,7 @@ class FeatureExtractor extends Stream.Transform {
 					this.samples = [...this.samples.slice(newSamples.length), ...newSamples]
 					try {
 						const features = this.extractFeatures( this.samples.slice(0, this.samplesPerFrame) )
-						this.emit('features', features, audioBuffer)
+						this.push({features, audioBuffer})
 					} catch (err) {
 						this.emit('error', err)
 					}
@@ -27,8 +29,6 @@ class FeatureExtractor extends Stream.Transform {
 		})
 
 		this._block.on('error', err => this.emit('error', err))
-
-		this.pipe(this._block)
 	}
 
 	get sampleRate() {
@@ -48,8 +48,7 @@ class FeatureExtractor extends Stream.Transform {
 	}
 
 	_write(audioData, enc, done) {
-		this.push(audioData)
-		done()
+		this._block.write(audioData, enc, done)
 	}
 
 	preEmphasis(audioBuffer) {

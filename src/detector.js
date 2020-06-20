@@ -8,13 +8,15 @@ const VoiceActivityFilter	= require('./vad')
 
 class WakewordDetector extends Stream.Transform {
 	constructor(options) {
-		super()
+		// Take audio buffer in and output keyword detection payload
+		super({
+			readableObjectMode: true
+		})
+
 		this.options	= options || {}
 		this._keywords	= new Map()
 		this._minFrames = 9999
 		this._maxFrames = 0
-
-		this.reset()
 
 		this._comparator = new FeatureComparator(options)
 
@@ -30,10 +32,12 @@ class WakewordDetector extends Stream.Transform {
 		this._extractor = this._createExtractor()
 
 		this._extractor
-			.on('features', (features, audioBuffer) => this._processFeatures(features, audioBuffer))
+			.on('data', ({features, audioBuffer}) => this._processFeatures(features, audioBuffer))
 			.on('error', err => this.emit('error', new Error('Extraction error: ' + err.message)))
 
-		this.pipe(this._vad).pipe(this._extractor)
+		this._vad.pipe(this._extractor)
+
+		this.reset()
 	}
 
 	get buffering() {
@@ -84,7 +88,7 @@ class WakewordDetector extends Stream.Transform {
 		const frames = await new Promise(async (resolve, reject) => {
 			const frames = []
 			const extractor = this._createExtractor()
-			extractor.on('features', features => {
+			extractor.on('data', ({features}) => {
 				frames.push(features)
 			})
 			const filePath = Path.resolve( process.cwd(), file )
@@ -139,19 +143,19 @@ class WakewordDetector extends Stream.Transform {
 		kw.enabled = false
 	}
 
-	process(audioBuffer) {
-		this.push(audioBuffer)
-	}
-
 	reset() {
 		this._frames = []
 		this._chunks = []
-		this._buffering = true
+		this._vad.buffering = true
 		this._state = {keyword: null, score: 0}
 	}
 
+	process(audioBuffer) {
+		this._vad.write(audioBuffer)
+	}
+
 	_transform(buffer, enc, done) {
-		done( null, buffer )
+		this._vad.write(buffer, enc, done)
 	}
 
 	_processFeatures(features, audioBuffer) {
@@ -185,6 +189,7 @@ class WakewordDetector extends Stream.Transform {
 						timestamp
 					}
 					this.emit('keyword', eventPayload)
+					this.push(eventPayload)
 					this.reset()
 					return
 				}
