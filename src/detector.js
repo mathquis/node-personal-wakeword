@@ -21,9 +21,9 @@ class WakewordDetector extends Stream.Transform {
 
 		this._extractor = this._createExtractor()
 
-		this._extractor.on('features', (features, audioBuffer) => {
-			this._processFeatures(features, audioBuffer)
-		})
+		this._extractor
+			.on('features', (features, audioBuffer) => this._processFeatures(features, audioBuffer))
+			.on('error', err => this.emit('error', new Error('Extraction error: ' + err.message)))
 
 		this._vad = VAD.createStream({
 		    mode: VAD.Mode.AGGRESSIVE,
@@ -31,21 +31,19 @@ class WakewordDetector extends Stream.Transform {
 		    debounceTime: this.vadDebounceTime
 		})
 
-		this._vad.on('data', data => {
-			if ( this._buffering || ( data && data.speech && data.speech.state == true ) ) {
-				this._extractor.write(data.audioData)
-			}
-		})
+		this._vad
+			.on('data', data => {
+				if ( this._buffering || ( data && data.speech && data.speech.state == true ) ) {
+					this._extractor.write(data.audioData)
+				}
+			})
+			.on('error', err => this.emit('error', new Error('VAD error: ' + err.message)))
 
 		this.pipe(this._vad)
 	}
 
 	get buffering() {
 		return this._buffering
-	}
-
-	get detected() {
-		return this._detected
 	}
 
 	get channels() {
@@ -155,8 +153,7 @@ class WakewordDetector extends Stream.Transform {
 	}
 
 	_transform(buffer, enc, done) {
-		this.push(buffer)
-		done()
+		done( null, buffer )
 	}
 
 	_processFeatures(features, audioBuffer) {
@@ -204,8 +201,9 @@ class WakewordDetector extends Stream.Transform {
 			if ( !kw.enabled ) return
 			const threshold = kw.threshold || this.threshold
 			const templates = kw.templates
-			templates.forEach((template) => {
-				const score = this._comparator.compare(template, features.slice(Math.round(-1 * template.length)))
+			templates.forEach((template, index) => {
+				const frames = features.slice(Math.round(-1 * template.length))
+				const score = this._comparator.compare(template, frames)
 				if ( score < threshold ) return
 				if ( score < result.score ) return
 				result = {
