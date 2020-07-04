@@ -131,6 +131,10 @@ class WakewordDetector extends Stream.Transform {
 		)
 	}
 
+	removeKeyword(keyword) {
+		this._keywords.delete(keyword)
+	}
+
 	enableKeyword(keyword) {
 		const kw = this._keywords.get(keyword)
 		if ( !kw ) throw new Error(`Unknown keyword "${keyword}"`)
