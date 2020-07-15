@@ -1,0 +1,52 @@
+const Stream	= require('stream')
+const VAD		= require('node-vad')
+
+class VoiceActivityFilter extends Stream.Transform {
+	constructor(options) {
+		super()
+		this.options	= options || {}
+		this._buffering	= !!options.buffering
+
+		this._vad = VAD.createStream({
+		    mode            : this.vadMode,
+		    audioFrequency  : this.sampleRate,
+		    debounceTime    : this.vadDebounceTime
+		})
+
+		this._vad
+			.on('data', data => {
+				if ( this._buffering || ( data && data.speech && data.speech.state == true ) ) {
+					this.push(data.audioData)
+				}
+			})
+			.on('error', err => this.emit('error', new Error('VAD error: ' + err.message)))
+	}
+
+	get sampleRate() {
+		return this.options.sampleRate || 16000
+	}
+
+	get vadMode() {
+		return this.options.vadMode || VAD.Mode.AGGRESSIVE
+	}
+
+	get vadDebounceTime() {
+		return this.options.vadDebounceTime || 500
+	}
+
+	get buffering() {
+		return !!this._buffering
+	}
+
+	set buffering(state) {
+		this._buffering = !!state
+	}
+
+	_transform(buffer, enc, done) {
+		this._vad.write(buffer, enc, done)
+	}
+}
+
+VoiceActivityFilter.Mode = VAD.Mode
+
+module.exports = VoiceActivityFilter
