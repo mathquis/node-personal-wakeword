@@ -180,10 +180,12 @@ class WakewordDetector extends Stream.Transform {
 	}
 
 	process(audioBuffer) {
+		if ( this._keywords.size === 0 ) return
 		this._vad.write(audioBuffer)
 	}
 
 	_transform(buffer, enc, done) {
+		if ( this._keywords.size === 0 ) return
 		this._vad.write(buffer, enc, done)
 	}
 
