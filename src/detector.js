@@ -37,6 +37,7 @@ class WakewordDetector extends Stream.Transform {
 
 		this._vad.pipe(this._extractor)
 
+		this.clearKeywords()
 		this.reset()
 	}
 
@@ -133,6 +134,10 @@ class WakewordDetector extends Stream.Transform {
 
 	removeKeyword(keyword) {
 		this._keywords.delete(keyword)
+	}
+
+	clearKeywords() {
+		this._keywords = new Map()
 	}
 
 	enableKeyword(keyword) {
