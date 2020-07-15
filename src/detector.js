@@ -86,23 +86,38 @@ class WakewordDetector extends Stream.Transform {
 	}
 
 	async extractFeaturesFromFile(file) {
+		const filePath = Path.resolve( process.cwd(), file )
+		let stats
+		try {
+			stats = await File.promises.stat(filePath)
+		} catch (err) {
+			throw new Error(`File "${filePath}" not found`)
+		}
+		if ( !stats.isFile() ) {
+			throw new Error(`File "${filePath}" is not a file`)
+		}
+		const input = File.createReadStream( filePath, {start: 44} )
+		return await this.extractFeaturesFromStream(input)
+	}
+
+	async extractFeaturesFromBuffer(buffer) {
+		const reader = new Stream.Readable({
+			read: () => {}
+		})
+
+		reader.push(buffer)
+		reader.push(null)
+
+		return await this.extractFeaturesFromStream(reader)
+	}
+
+	async extractFeaturesFromStream(input) {
 		const frames = await new Promise(async (resolve, reject) => {
 			const frames = []
 			const extractor = this._createExtractor()
 			extractor.on('data', ({features}) => {
 				frames.push(features)
 			})
-			const filePath = Path.resolve( process.cwd(), file )
-			let stats
-			try {
-				stats = await File.promises.stat(filePath)
-			} catch (err) {
-				return reject( new Error(`File "${filePath}" not found`) )
-			}
-			if ( !stats.isFile() ) {
-				return reject( new Error(`File "${filePath}" is not a file`) )
-			}
-			const input = File.createReadStream( filePath, {start: 44} )
 			input
 				.on('error', err => {
 					reject(err)
@@ -116,15 +131,20 @@ class WakewordDetector extends Stream.Transform {
 		return frames
 	}
 
-	async addKeyword(keyword, files, options) {
+	async addKeyword(keyword, templates, options) {
 		let kw = this._keywords.get(keyword)
 		if ( !kw ) {
 			kw = new WakewordKeyword(keyword, options)
 			this._keywords.set(keyword, kw)
 		}
 		await Promise.all(
-			files.map(async file => {
-				const features = await this.extractFeaturesFromFile(file)
+			templates.map(async template => {
+				let features
+				if ( Buffer.isBuffer(template) ) {
+					features = await this.extractFeaturesFromBuffer(template)
+				} else {
+					features = await this.extractFeaturesFromFile(template)
+				}
 				this._minFrames = Math.min(this._minFrames, features.length)
 				this._maxFrames = Math.max(this._maxFrames, features.length)
 				kw.addFeatures(features)

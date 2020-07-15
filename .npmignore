@@ -4,3 +4,5 @@ wavs
 record.js
 test.js
 try.js
+*.wav
+*.raw
