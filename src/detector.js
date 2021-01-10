@@ -46,7 +46,7 @@ class WakewordDetector extends Stream.Transform {
 	}
 
 	get channels() {
-		return 1
+		return this.options.channels || 1
 	}
 
 	get bitLength() {
@@ -193,7 +193,7 @@ class WakewordDetector extends Stream.Transform {
 		this._frames.push(features)
 		this._chunks.push(audioBuffer)
 		const numFrames = this._frames.length
-		if ( numFrames > this._minFrames ) {
+		if ( numFrames >= this._minFrames ) {
 			if ( this._vad.buffering ) {
 				this._vad.buffering = false
 				this.emit('ready')
