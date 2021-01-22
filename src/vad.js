@@ -15,7 +15,13 @@ class VoiceActivityFilter extends Stream.Transform {
 
 		this._vad
 			.on('data', data => {
-				if ( this._buffering || ( data && data.speech && data.speech.state == true ) ) {
+				if ( data.speech.start === true ) {
+					this.emit('start')
+				}
+				if ( data.speech.end === true ) {
+					this.emit('stop')
+				}
+				if ( this.buffering || data.speech.state === true ) {
 					this.push(data.audioData)
 				}
 			})
@@ -31,7 +37,7 @@ class VoiceActivityFilter extends Stream.Transform {
 	}
 
 	get vadDebounceTime() {
-		return this.options.vadDebounceTime || 500
+		return this.options.vadDebounceTime || 1000
 	}
 
 	get buffering() {
