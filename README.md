@@ -66,6 +66,16 @@ async function main() {
 		console.error(err.stack)
 	})
 
+	// The detector will emit a "vad-silence" event when no voice is heard
+	detector.on('vad-silence', () => {
+		console.log('Hearing silence...')
+	})
+
+	// The detector will emit a "vad-voice" event when it hears a voice
+	detector.on('vad-voice', () => {
+		console.log('Hearing voices...')
+	})
+
 	// The detector will emit a "keyword" event when it has detected a keyword in the audio stream
 	/* The event payload is:
 		{
