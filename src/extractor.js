@@ -51,6 +51,16 @@ class FeatureExtractor extends Stream.Transform {
 		this._block.write(audioData, enc, done)
 	}
 
+	destroy(err) {
+		this._block.removeAllListeners()
+		this._block.destroy()
+		this._block = null
+
+		this._extractor = null
+
+		super.destroy(err)
+	}
+
 	preEmphasis(audioBuffer) {
 		const coef = this.preEmphasisCoefficient
 		const samples = Array

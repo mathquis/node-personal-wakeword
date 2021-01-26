@@ -134,6 +134,7 @@ class WakewordDetector extends Stream.Transform {
 	}
 
 	async addKeyword(keyword, templates, options) {
+		if ( this.destroyed ) throw new Error('Unable to add keyword')
 		let kw = this._keywords.get(keyword)
 		if ( !kw ) {
 			kw = new WakewordKeyword(keyword, options)
@@ -155,6 +156,7 @@ class WakewordDetector extends Stream.Transform {
 	}
 
 	removeKeyword(keyword) {
+		if ( this.destroyed ) throw new Error('Unable to remove keyword')
 		this._keywords.delete(keyword)
 	}
 
@@ -163,27 +165,51 @@ class WakewordDetector extends Stream.Transform {
 	}
 
 	enableKeyword(keyword) {
+		if ( this.destroyed ) throw new Error('Unable to enable keyword')
 		const kw = this._keywords.get(keyword)
 		if ( !kw ) throw new Error(`Unknown keyword "${keyword}"`)
 		kw.enabled = true
 	}
 
 	disableKeyword(keyword) {
+		if ( this.destroyed ) throw new Error('Unable to disable keyword')
 		const kw = this._keywords.get(keyword)
 		if ( !kw ) throw new Error(`Unknown keyword "${keyword}"`)
 		kw.enabled = false
 	}
 
+	process(audioBuffer) {
+		if ( this.destroyed ) throw new Error('Unable to process audio buffer with destroyed stream')
+		if ( this._keywords.size === 0 ) return
+		this._vad.write(audioBuffer)
+	}
+
 	reset() {
 		this._frames = []
 		this._chunks = []
-		this._vad.buffering = true
 		this._state = {keyword: null, score: 0}
+		if ( this._vad ) {
+			this._vad.buffering = true
+		}
 	}
 
-	process(audioBuffer) {
-		if ( this._keywords.size === 0 ) return
-		this._vad.write(audioBuffer)
+	destroy(err) {
+		this._vad.unpipe(this._extractor)
+		this._vad.removeAllListeners()
+		this._vad.destroy()
+		this._vad = null
+
+		this._extractor.removeAllListeners()
+		this._extractor.destroy()
+		this._extractor = null
+
+		this._comparator.destroy()
+		this._comparator = null
+
+		this.clearKeywords()
+		this.reset()
+
+		super.destroy(err)
 	}
 
 	_transform(buffer, enc, done) {

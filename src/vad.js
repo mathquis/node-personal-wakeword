@@ -51,6 +51,14 @@ class VoiceActivityFilter extends Stream.Transform {
 	_transform(buffer, enc, done) {
 		this._vad.write(buffer, enc, done)
 	}
+
+	destroy(err) {
+		this._vad.removeAllListeners()
+		this._vad.destroy()
+		this._vad = null
+
+		super.destroy(err)
+	}
 }
 
 VoiceActivityFilter.Mode = VAD.Mode

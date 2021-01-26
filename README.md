@@ -113,6 +113,19 @@ async function main() {
 	recorder.pipe(detector)
 
 	recorder.start()
+
+	// Destroy the recorder and detector after 10s
+	setTimeout(() => {
+		recorder.unpipe(detector)
+
+		recorder.removeAllListeners()
+		recorder.destroy()
+		recorder = null
+
+		detector.removeAllListeners()
+		detector.destroy()
+		detector = null
+	}, 10000)
 }
 
 main()

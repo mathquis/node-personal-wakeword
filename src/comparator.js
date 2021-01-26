@@ -28,6 +28,10 @@ class FeatureComparator {
 	computeProbability(cost) {
 		return 1 / ( 1 + Math.exp( ( cost - this.ref ) / this.ref ) )
 	}
+
+	destroy() {
+
+	}
 }
 
 module.exports = FeatureComparator
