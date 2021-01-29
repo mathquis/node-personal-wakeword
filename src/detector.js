@@ -285,7 +285,9 @@ class WakewordDetector extends Stream.Transform {
 
 	_normalizeFeatures(frames) {
 		// Normalize by removing mean
-		const numFrames			= frames.length
+		const numFrames = frames.length
+		if ( numFrames === 0 ) return []
+
 		const numFeatures		= frames[0].length
 		const sum				= new Array(numFeatures).fill(0)
 		const normalizedFrames	= new Array(numFrames)
