@@ -28,7 +28,7 @@ class FeatureExtractor extends Stream.Transform {
 				}
 		})
 
-		this._block.on('error', err => this.emit('error', err))
+		this._block.on('error', err => this.emit('error',new Error('Extractor error: ' + err.message)))
 	}
 
 	get sampleRate() {

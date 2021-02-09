@@ -27,7 +27,7 @@ class WakewordDetector extends Stream.Transform {
 		})
 
 		this._vad
-			.on('error', err => this.emit('error', new Error('VAD error: ' + err.message)))
+			.on('error', err => this.emit('error', err))
 			.on('stop', () => this.emit('vad-silence'))
 			.on('start', () => this.emit('vad-voice'))
 
@@ -35,7 +35,7 @@ class WakewordDetector extends Stream.Transform {
 
 		this._extractor
 			.on('data', ({features, audioBuffer}) => this._processFeatures(features, audioBuffer))
-			.on('error', err => this.emit('error', new Error('Extraction error: ' + err.message)))
+			.on('error', err => this.emit('error', err))
 
 		this._vad.pipe(this._extractor)
 
