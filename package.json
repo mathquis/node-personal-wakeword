@@ -1,6 +1,6 @@
 {
   "name": "@mathquis/node-personal-wakeword",
-  "version": "1.0.10",
+  "version": "1.0.11",
   "description": "Personal wake word detector",
   "main": "index.js",
   "scripts": {
