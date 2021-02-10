@@ -13,22 +13,22 @@ class FeatureExtractor extends Stream.Transform {
 		this._extractor	= new Gist(this.samplesPerFrame, this.sampleRate)
 		this._block		= new Block( this.samplesPerShift * this.sampleRate / 8000 )
 
-		this._block.on('data', audioBuffer => {
-				const newSamples = this.preEmphasis( audioBuffer )
-				if ( this.samples.length >= this.samplesPerFrame ) {
-					this.samples = [...this.samples.slice(newSamples.length), ...newSamples]
-					try {
-						const features = this.extractFeatures( this.samples.slice(0, this.samplesPerFrame) )
-						this.push({features, audioBuffer})
-					} catch (err) {
-						this.emit('error', err)
+		this._block
+			.on('data', audioBuffer => {
+					const newSamples = this.preEmphasis( audioBuffer )
+					if ( this.samples.length >= this.samplesPerFrame ) {
+						this.samples = [...this.samples.slice(newSamples.length), ...newSamples]
+						try {
+							const features = this.extractFeatures( this.samples.slice(0, this.samplesPerFrame) )
+							this.push({features, audioBuffer})
+						} catch (err) {
+							this.error(err)
+						}
+					} else {
+						this.samples = [...this.samples, ...newSamples]
 					}
-				} else {
-					this.samples = [...this.samples, ...newSamples]
-				}
-		})
-
-		this._block.on('error', err => this.emit('error',new Error('Extractor error: ' + err.message)))
+			})
+			.on('error', err => this.error(err))
 	}
 
 	get sampleRate() {
@@ -49,6 +49,10 @@ class FeatureExtractor extends Stream.Transform {
 
 	_write(audioData, enc, done) {
 		this._block.write(audioData, enc, done)
+	}
+
+	error(err) {
+		this.emit('error', err)
 	}
 
 	destroy(err) {

@@ -25,7 +25,7 @@ class VoiceActivityFilter extends Stream.Transform {
 					this.push(data.audioData)
 				}
 			})
-			.on('error', err => this.emit('error', new Error('VAD error: ' + err.message)))
+			.on('error', err => this.error(err))
 	}
 
 	get sampleRate() {
@@ -50,6 +50,10 @@ class VoiceActivityFilter extends Stream.Transform {
 
 	_transform(buffer, enc, done) {
 		this._vad.write(buffer, enc, done)
+	}
+
+	error(err) {
+		this.emit('error', err)
 	}
 
 	destroy(err) {
