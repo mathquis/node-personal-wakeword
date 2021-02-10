@@ -12,12 +12,12 @@ npm i @mathquis/node-personal-wakeword
 
 ```javascript
 const WakewordDetector = require('@mathquis/node-personal-wakeword')
-const Recorder = require('mic')
+const mic = require('mic')
 const Stream = require('stream')
 
 async function main() {
 	// Create a new wakeword detection engine
-	const detector = new WakewordDetector({
+	let detector = new WakewordDetector({
 		/*
 		sampleRate: 16000,
 		bitLength: 16,
@@ -113,23 +113,25 @@ async function main() {
 	// *****
 
 	// Create an audio stream from an audio recorder (arecord, sox, etc.)
-	const recorder = new Recorder({
+	let recorder = mic({
 		channels      : detector.channels, // Defaults to 1
 		rate          : detector.sampleRate, // Defaults to 16000
 		bitwidth      : detector.bitLength // Defaults to 16
 	})
+	let stream = recorder.getAudioStream()
 
 	// Pipe to wakeword detector
-	recorder.pipe(detector)
+	stream.pipe(detector)
 
 	recorder.start()
 
 	// Destroy the recorder and detector after 10s
 	setTimeout(() => {
-		recorder.unpipe(detector)
+		stream.unpipe(detector)
 
-		recorder.removeAllListeners()
-		recorder.destroy()
+		stream.removeAllListeners()
+		stream.destroy()
+		stream = null
 		recorder = null
 
 		detector.removeAllListeners()
