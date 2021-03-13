@@ -1,6 +1,8 @@
 const Stream				= require('stream')
 const File					= require('fs')
 const Path					= require('path')
+const debug 				= require('debug')('detector')
+const debugDetection 		= require('debug')('detected')
 const FeatureExtractor		= require('./extractor')
 const FeatureComparator		= require('./comparator')
 const WakewordKeyword		= require('./keyword')
@@ -18,6 +20,17 @@ class WakewordDetector extends Stream.Transform {
 		this._minFrames = 9999
 		this._maxFrames = 0
 
+		debug('sampleRate      : %d', this.sampleRate)
+		debug('bitLength       : %d', this.bitLength)
+		debug('channels        : %d', this.channels)
+		debug('samplesPerFrame : %d', this.samplesPerFrame)
+		debug('samplesPerShift : %d', this.samplesPerShift)
+		debug('frameLengthMS   : %d', this.frameLengthMS)
+		debug('frameShiftMS    : %d', this.frameShiftMS)
+		debug('threshold       : %d', this.threshold)
+		debug('vadMode         : %s', this.vadMode)
+		debug('vadDebounceTime : %d', this.vadDebounceTime)
+
 		this._comparator = new FeatureComparator(options)
 
 		this._vad = new VoiceActivityFilter({
@@ -27,6 +40,7 @@ class WakewordDetector extends Stream.Transform {
 		})
 
 		this._vad
+			.on('drain', () => debug('VAD drained'))
 			.on('error', err => this.error(err))
 			.on('stop', () => this.emit('vad-silence'))
 			.on('start', () => this.emit('vad-voice'))
@@ -34,6 +48,7 @@ class WakewordDetector extends Stream.Transform {
 		this._extractor = this._createExtractor()
 
 		this._extractor
+			.on('drain', () => debug('Extractor drained'))
 			.on('data', ({features, audioBuffer}) => this._processFeatures(features, audioBuffer))
 			.on('error', err => this.error(err))
 
@@ -44,7 +59,7 @@ class WakewordDetector extends Stream.Transform {
 	}
 
 	get buffering() {
-		return this._buffering
+		return this._vad.buffering
 	}
 
 	get channels() {
@@ -80,7 +95,7 @@ class WakewordDetector extends Stream.Transform {
 	}
 
 	get vadMode() {
-		return this.options.vadMode || VoiceActivityFilter.Mode.MODE_AGGRESSIVE
+		return this.options.vadMode || VoiceActivityFilter.Mode.AGGRESSIVE
 	}
 
 	get vadDebounceTime() {
@@ -89,6 +104,7 @@ class WakewordDetector extends Stream.Transform {
 
 	async extractFeaturesFromFile(file) {
 		const filePath = Path.resolve( process.cwd(), file )
+		debug('Extracting features from file "%s"', filePath)
 		let stats
 		try {
 			stats = await File.promises.stat(filePath)
@@ -103,6 +119,7 @@ class WakewordDetector extends Stream.Transform {
 	}
 
 	async extractFeaturesFromBuffer(buffer) {
+		debug('Extracting features from buffer (length: %d)', buffer.length)
 		const reader = new Stream.Readable({
 			read: () => {}
 		})
@@ -114,6 +131,7 @@ class WakewordDetector extends Stream.Transform {
 	}
 
 	async extractFeaturesFromStream(input) {
+		debug('Extracting features from stream')
 		const frames = await new Promise(async (resolve, reject) => {
 			const frames = []
 			const extractor = this._createExtractor()
@@ -130,6 +148,8 @@ class WakewordDetector extends Stream.Transform {
 
 			input.pipe(extractor)
 		})
+		const firstFrame = frames[0] || []
+		debug('Features: %d x %d', frames.length, firstFrame.length)
 		return frames
 	}
 
@@ -153,15 +173,18 @@ class WakewordDetector extends Stream.Transform {
 				kw.addFeatures(features)
 			})
 		)
+		debug('Added keyword "%s" (templates: %d)', keyword, templates.length)
 	}
 
 	removeKeyword(keyword) {
 		if ( this.destroyed ) throw new Error('Unable to remove keyword')
 		this._keywords.delete(keyword)
+		debug('Removed keyword "%s"', keyword)
 	}
 
 	clearKeywords() {
 		this._keywords = new Map()
+		debug('Keywords cleared')
 	}
 
 	enableKeyword(keyword) {
@@ -169,6 +192,7 @@ class WakewordDetector extends Stream.Transform {
 		const kw = this._keywords.get(keyword)
 		if ( !kw ) throw new Error(`Unknown keyword "${keyword}"`)
 		kw.enabled = true
+		debug('Keyword "%s" enabled', keyword)
 	}
 
 	disableKeyword(keyword) {
@@ -176,11 +200,13 @@ class WakewordDetector extends Stream.Transform {
 		const kw = this._keywords.get(keyword)
 		if ( !kw ) throw new Error(`Unknown keyword "${keyword}"`)
 		kw.enabled = false
+		debug('Keyword "%s" disabled', keyword)
 	}
 
 	process(audioBuffer) {
 		if ( this.destroyed ) throw new Error('Unable to process audio buffer with destroyed stream')
 		if ( this._keywords.size === 0 ) return
+		debug('Processing audio buffer (length: %d)', audioBuffer.length)
 		this._vad.write(audioBuffer)
 	}
 
@@ -191,6 +217,7 @@ class WakewordDetector extends Stream.Transform {
 		if ( this._vad ) {
 			this._vad.buffering = true
 		}
+		debug('Reset')
 	}
 
 	error(err) {
@@ -214,6 +241,8 @@ class WakewordDetector extends Stream.Transform {
 		this.reset()
 
 		super.destroy(err)
+
+		debug('Destroyed')
 	}
 
 	_transform(buffer, enc, done) {
@@ -221,21 +250,30 @@ class WakewordDetector extends Stream.Transform {
 			done()
 			return
 		}
-		this._vad.write(buffer, enc, done)
+		debug('Piping buffer (length: %d)', buffer.length)
+		const res = this._vad.write(buffer, enc, done)
+		if ( !res ) {
+			this._vad.once('drain', () => {
+				debug('Pipe is available')
+			})
+			debug('Pipe is full')
+		}
 	}
 
 	_processFeatures(features, audioBuffer) {
 		this._frames.push(features)
 		this._chunks.push(audioBuffer)
 		const numFrames = this._frames.length
+		// debug('Processing features (frames: %d, min: %d, max: %d', numFrames, this._minFrames, this._maxFrames)
 		if ( numFrames >= this._minFrames ) {
 			if ( this._vad.buffering ) {
 				this._vad.buffering = false
 				this.emit('ready')
+				debug('Ready')
 			}
 			this._runDetection()
 		}
-		if ( numFrames > this._maxFrames ) {
+		if ( numFrames >= this._maxFrames ) {
 			this._frames.shift()
 			this._chunks.shift()
 		}
@@ -251,9 +289,13 @@ class WakewordDetector extends Stream.Transform {
 					const audioData = Buffer.concat(this._chunks.slice(Math.round(-1.2 * result.frames)))
 					const eventPayload = {
 						...result,
+						score: this._state.score,
 						audioData,
 						timestamp
 					}
+					debugDetection('------------------------------------')
+					debugDetection('Detected "%s" (%f)', eventPayload.keyword, eventPayload.score)
+					debugDetection('------------------------------------')
 					this.emit('keyword', eventPayload)
 					this.push(eventPayload)
 					this.reset()
@@ -261,6 +303,7 @@ class WakewordDetector extends Stream.Transform {
 				}
 			}
 		}
+		debug('Detected keyword "%s" (%f)', result.keyword, result.score)
 		this._state = result
 	}
 

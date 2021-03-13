@@ -1,5 +1,6 @@
 const Stream			= require('stream')
 const Block				= require('block-stream2')
+const debug 			= require('debug')('extractor')
 const Gist				= require('@mathquis/node-gist')
 const Utils 			= require('./utils')
 
@@ -15,11 +16,13 @@ class FeatureExtractor extends Stream.Transform {
 
 		this._block
 			.on('data', audioBuffer => {
+					debug('Extracting from frame (length: %d)', audioBuffer.length)
 					const newSamples = this.preEmphasis( audioBuffer )
 					if ( this.samples.length >= this.samplesPerFrame ) {
 						this.samples = [...this.samples.slice(newSamples.length), ...newSamples]
 						try {
 							const features = this.extractFeatures( this.samples.slice(0, this.samplesPerFrame) )
+							debug('Features: %O', features)
 							this.push({features, audioBuffer})
 						} catch (err) {
 							this.error(err)

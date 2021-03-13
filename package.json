@@ -9,6 +9,7 @@
   "dependencies": {
     "@mathquis/node-gist": "^1.0.2",
     "block-stream2": "^2.0.0",
+    "debug": "^4.3.1",
     "node-vad": "^1.1.4"
   },
   "devDependencies": {
