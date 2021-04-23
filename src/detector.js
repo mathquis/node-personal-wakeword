@@ -17,6 +17,8 @@ class WakewordDetector extends Stream.Transform {
 
 		this.options	= options || {}
 		this._keywords	= new Map()
+		this._buffering = true
+		this._full 		= false
 		this._minFrames = 9999
 		this._maxFrames = 0
 
@@ -28,10 +30,25 @@ class WakewordDetector extends Stream.Transform {
 		debug('frameLengthMS   : %d', this.frameLengthMS)
 		debug('frameShiftMS    : %d', this.frameShiftMS)
 		debug('threshold       : %d', this.threshold)
+		debug('useVad          : %s', this.useVad)
 		debug('vadMode         : %s', this.vadMode)
 		debug('vadDebounceTime : %d', this.vadDebounceTime)
 
 		this._comparator = new FeatureComparator(options)
+
+		this._extractor = this._createExtractor()
+
+		this._extractor
+			.on('data', ({features, audioBuffer}) => {
+				this._processFeatures(features, audioBuffer)
+			})
+			.on('error', err => {
+				this.error(err)
+			})
+			.on('drain', () => {
+				debug('Extractor is available')
+				this._full = false
+			})
 
 		this._vad = new VoiceActivityFilter({
 			buffering: true,
@@ -39,27 +56,20 @@ class WakewordDetector extends Stream.Transform {
 			vadDebounceTime: this.vadDebounceTime
 		})
 
-		this._vad
-			.on('drain', () => debug('VAD drained'))
-			.on('error', err => this.error(err))
-			.on('stop', () => this.emit('vad-silence'))
-			.on('start', () => this.emit('vad-voice'))
-
-		this._extractor = this._createExtractor()
-
-		this._extractor
-			.on('drain', () => debug('Extractor drained'))
-			.on('data', ({features, audioBuffer}) => this._processFeatures(features, audioBuffer))
-			.on('error', err => this.error(err))
-
-		this._vad.pipe(this._extractor)
-
 		this.clearKeywords()
 		this.reset()
 	}
 
+	get full() {
+		return this._full
+	}
+
 	get buffering() {
-		return this._vad.buffering
+		return this._buffering
+	}
+
+	set buffering(enabled) {
+		this._buffering = !! enabled
 	}
 
 	get channels() {
@@ -92,6 +102,10 @@ class WakewordDetector extends Stream.Transform {
 
 	get threshold() {
 		return this.options.threshold || 0.5
+	}
+
+	get useVad() {
+		return typeof this.options.vad !== 'undefined' ? this.options.vad : true
 	}
 
 	get vadMode() {
@@ -205,19 +219,30 @@ class WakewordDetector extends Stream.Transform {
 
 	process(audioBuffer) {
 		if ( this.destroyed ) throw new Error('Unable to process audio buffer with destroyed stream')
-		if ( this._keywords.size === 0 ) return
-		debug('Processing audio buffer (length: %d)', audioBuffer.length)
-		this._vad.write(audioBuffer)
+		this.write(audioBuffer)
 	}
 
 	reset() {
 		this._frames = []
 		this._chunks = []
 		this._state = {keyword: null, score: 0}
-		if ( this._vad ) {
-			this._vad.buffering = true
-		}
+		this.buffering = true
 		debug('Reset')
+		debug('destroyed', this.destroyed)
+		debug('writable.writable', this.writable)
+		debug('writable.writableEnded', this.writableEnded)
+		debug('writable.writableCorked', this.writableCorked)
+		debug('writable.writableFinished', this.writableFinished)
+		debug('writable.writableHighWaterMark', this.writableHighWaterMark)
+		debug('writable.writableLength', this.writableLength)
+		debug('writable.writableNeedDrain', this.writableNeedDrain)
+		debug('readable.readable', this.readable)
+		debug('readable.readableEncoding', this.readableEncoding)
+		debug('readable.readableEnded', this.readableEnded)
+		debug('readable.readableFlowing', this.readableFlowing)
+		debug('readable.readableHighWaterMark', this.readableHighWaterMark)
+		debug('readable.readableLength', this.readableLength)
+		debug('readable.readableObjectMode', this.readableObjectMode)
 	}
 
 	error(err) {
@@ -225,8 +250,6 @@ class WakewordDetector extends Stream.Transform {
 	}
 
 	destroy(err) {
-		this._vad.unpipe(this._extractor)
-		this._vad.removeAllListeners()
 		this._vad.destroy()
 		this._vad = null
 
@@ -245,19 +268,35 @@ class WakewordDetector extends Stream.Transform {
 		debug('Destroyed')
 	}
 
-	_transform(buffer, enc, done) {
+	async _transform(buffer, enc, done) {
 		if ( this._keywords.size === 0 ) {
 			done()
 			return
 		}
-		debug('Piping buffer (length: %d)', buffer.length)
-		const res = this._vad.write(buffer, enc, done)
-		if ( !res ) {
-			this._vad.once('drain', () => {
-				debug('Pipe is available')
-			})
-			debug('Pipe is full')
+		if ( this.full ) {
+			done()
+			return
 		}
+		if ( this._extractor.full ) {
+			done()
+			return
+		}
+		let isVoice = true
+		if ( this.useVad ) {
+			isVoice = await this._vad.processAudio(buffer)
+			debug('Voice? %s', isVoice)
+		}
+		if ( !isVoice ) {
+			done()
+			return
+		}
+		debug('Piping buffer (length: %d)', buffer.length)
+		const res = this._extractor.write(buffer)
+		if ( !res ) {
+			debug('Extractor is full')
+			this._full = true
+		}
+		done()
 	}
 
 	_processFeatures(features, audioBuffer) {
@@ -266,8 +305,8 @@ class WakewordDetector extends Stream.Transform {
 		const numFrames = this._frames.length
 		// debug('Processing features (frames: %d, min: %d, max: %d', numFrames, this._minFrames, this._maxFrames)
 		if ( numFrames >= this._minFrames ) {
-			if ( this._vad.buffering ) {
-				this._vad.buffering = false
+			if ( this.buffering ) {
+				this.buffering = false
 				this.emit('ready')
 				debug('Ready')
 			}
@@ -296,7 +335,6 @@ class WakewordDetector extends Stream.Transform {
 					debugDetection('------------------------------------')
 					debugDetection('Detected "%s" (%f)', eventPayload.keyword, eventPayload.score)
 					debugDetection('------------------------------------')
-					this.emit('keyword', eventPayload)
 					this.push(eventPayload)
 					this.reset()
 					return

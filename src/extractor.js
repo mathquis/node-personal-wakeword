@@ -11,10 +11,15 @@ class FeatureExtractor extends Stream.Transform {
 		})
 		this.options	= options || {}
 		this.samples	= []
+		this._full 		= false
 		this._extractor	= new Gist(this.samplesPerFrame, this.sampleRate)
 		this._block		= new Block( this.samplesPerShift * this.sampleRate / 8000 )
 
 		this._block
+			.on('drain', () => {
+				debug('Block stream available')
+				this._full = false
+			})
 			.on('data', audioBuffer => {
 					debug('Extracting from frame (length: %d)', audioBuffer.length)
 					const newSamples = this.preEmphasis( audioBuffer )
@@ -34,6 +39,10 @@ class FeatureExtractor extends Stream.Transform {
 			.on('error', err => this.error(err))
 	}
 
+	get full() {
+		return this._full
+	}
+
 	get sampleRate() {
 		return this.options.sampleRate || 16000
 	}
@@ -51,7 +60,10 @@ class FeatureExtractor extends Stream.Transform {
 	}
 
 	_write(audioData, enc, done) {
-		this._block.write(audioData, enc, done)
+		if ( !this._block.write(audioData, enc, done) ) {
+			debug('Block stream is full')
+			this._full = true
+		}
 	}
 
 	error(err) {

@@ -1,5 +1,4 @@
 const Matrix            = require('./matrix')
-const Comparison        = require('./comparison')
 const EuclidianDistance = require('./distance')
 
 class DTW {
@@ -102,12 +101,12 @@ class DTW {
                     this._state.distanceCostMatrix[rowIndex - 1][columnIndex],          // Insertion
                     this._state.distanceCostMatrix[rowIndex][columnIndex - 1],          // Deletion
                     this._state.distanceCostMatrix[rowIndex - 1][columnIndex - 1])      // Match
-                if (Comparison.nearlyEqual(min, this._state.distanceCostMatrix[rowIndex - 1][columnIndex - 1], epsilon)) {
+                if (min === this._state.distanceCostMatrix[rowIndex - 1][columnIndex - 1]) {
                     rowIndex--
                     columnIndex--
-                } else if (Comparison.nearlyEqual(min, this._state.distanceCostMatrix[rowIndex - 1][columnIndex], epsilon)) {
+                } else if (min === this._state.distanceCostMatrix[rowIndex - 1][columnIndex]) {
                     rowIndex--
-                } else if (Comparison.nearlyEqual(min, this._state.distanceCostMatrix[rowIndex][columnIndex - 1], epsilon)) {
+                } else if (min === this._state.distanceCostMatrix[rowIndex][columnIndex - 1]) {
                     columnIndex--
                 }
             } else if ((rowIndex > 0) && (columnIndex === 0)) {
