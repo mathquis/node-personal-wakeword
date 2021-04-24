@@ -76,7 +76,7 @@ async function main() {
 		console.log('Hearing voices...')
 	})
 
-	// The detector will emit a "keyword" event when it has detected a keyword in the audio stream
+	// The detector will emit a "data" event when it has detected a keyword in the audio stream
 	/* The event payload is:
 		{
 			"keyword"     : "alexa", // The detected keyword
@@ -87,7 +87,7 @@ async function main() {
 			"audioData"   : <Buffer> // The utterance audio data (can be written to a file for debugging)
 		}
 	*/
-	detector.on('keyword', ({keyword, score, threshold, timestamp}) => {
+	detector.on('data', ({keyword, score, threshold, timestamp}) => {
 		console.log(`Detected "${keyword}" with score ${score} / ${threshold}`)
 	})
 
@@ -102,7 +102,7 @@ async function main() {
 	const detectionStream = new Stream.Writable({
 		objectMode: true,
 		write: (data, enc, done) => {
-			// `data` is equivalent to "keyword" and "data" event payload
+			// `data` is equivalent to "data" event payload
 			console.log(data)
 			done()
 		}
