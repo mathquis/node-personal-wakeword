@@ -17,7 +17,9 @@ declare type DetectorOptions = {
 	frameShiftMS?: number,
 	threshold?: number,
 	vadMode?: number,
-	vadDebounceTime?: number
+	vadDebounceTime?: number,
+	preEmphasisCoefficient?: number,
+	vad?: boolean
 };
 
 declare class Detector extends Transform {
