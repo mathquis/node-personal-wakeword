@@ -1,37 +1,37 @@
-const DTW	= require('./dtw/dtw')
-const Utils	= require('./utils')
+const DTW   = require('./dtw/dtw')
+const Utils = require('./utils')
 
 class FeatureComparator {
-	constructor(options) {
-		this.options = options || {}
-		this._dtw = new DTW({distanceFunction: FeatureComparator.calculateDistance})
-	}
+  constructor(options) {
+    this.options = options || {}
+    this._dtw = new DTW({distanceFunction: FeatureComparator.calculateDistance})
+  }
 
-	static calculateDistance(ax, bx) {
-		return 1 - Utils.cosineSimilarity(ax, bx)
-	}
+  static calculateDistance(ax, bx) {
+    return 1 - Utils.cosineSimilarity(ax, bx)
+  }
 
-	get bandSize() {
-		return this.options.bandSize || 5
-	}
+  get bandSize() {
+    return this.options.bandSize || 5
+  }
 
-	get ref() {
-		return this.options.ref || 0.22
-	}
+  get ref() {
+    return this.options.ref || 0.22
+  }
 
-	compare(a, b) {
-		const cost = this._dtw.compute(a, b, this.bandSize)
-		const normalizedCost = cost / ( a.length + b.length )
-		return this.computeProbability(normalizedCost)
-	}
+  compare(a, b) {
+    const cost = this._dtw.compute(a, b, this.bandSize)
+    const normalizedCost = cost / ( a.length + b.length )
+    return this.computeProbability(normalizedCost)
+  }
 
-	computeProbability(cost) {
-		return 1 / ( 1 + Math.exp( ( cost - this.ref ) / this.ref ) )
-	}
+  computeProbability(cost) {
+    return 1 / ( 1 + Math.exp( ( cost - this.ref ) / this.ref ) )
+  }
 
-	destroy() {
+  destroy() {
 
-	}
+  }
 }
 
 module.exports = FeatureComparator
