@@ -101,7 +101,9 @@ class WakewordDetector extends Stream.Transform {
   }
 
   get threshold() {
-    return this.options.threshold || 0.5
+    const threshold = parseFloat(this.options.threshold)
+    if ( isNaN(threshold) ) return 0.5
+    return threshold
   }
 
   get useVad() {
@@ -215,6 +217,24 @@ class WakewordDetector extends Stream.Transform {
     if ( !kw ) throw new Error(`Unknown keyword "${keyword}"`)
     kw.enabled = false
     debug('Keyword "%s" disabled', keyword)
+  }
+
+  async match(audioData) {
+    const st = (new Date()).getTime()
+    const frames = await this.extractFeaturesFromBuffer(audioData)
+    const features = this._normalizeFeatures(frames)
+    const result = this._getBestKeyword(features)
+    if ( result.keyword !== null ) {
+      const timestamp = (new Date()).getTime()
+      const et = (new Date()).getTime()
+      const match = {
+        ...result,
+        score: result.score,
+        duration: (et-st)
+      }
+      return match
+    }
+    return null
   }
 
   process(audioBuffer) {
