@@ -175,14 +175,14 @@ declare class WakewordDetector extends Transform {
   /**
    * Extracts features from a PCM buffer.
    * 
-   * It's assumed that the WAV file has the same sample rate, bit depth, and channels of the detector.
+   * It's assumed that the audio buffer has the same sample rate, bit depth, and channels of the detector.
    */
   extractFeaturesFromBuffer(buffer: Buffer): Promise<number[][]>;
 
   /**
    * Extracts features from a PCM stream.
    * 
-   * It's assumed that the WAV file has the same sample rate, bit depth, and channels of the detector.
+   * It's assumed that the audio stream has the same sample rate, bit depth, and channels of the detector.
    */
   extractFeaturesFromStream(stream: Stream): Promise<number[][]>;
 
